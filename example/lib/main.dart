@@ -20,7 +20,10 @@ class _MyAppState extends State<MyApp> {
     super.initState();
     _player = AudioPlayer();
     _player.setUrl(
-        "https://s3.amazonaws.com/scifri-episodes/scifri20181123-episode.mp3");
+        "http://oss.qindaotv.cn/2019/10/23/e04248990987874d78705d6e7c3a809c/index.mp3",
+        name: 'test',
+        img:
+            'http://oss.qindaotv.cn/2019/11/15/cc8b351ff765ff4d0eb835d4e866fb63.png');
   }
 
   @override

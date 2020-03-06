@@ -1,5 +1,6 @@
 package com.ryanheise.just_audio;
 
+import android.content.Intent;
 import android.os.Handler;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.Player;
@@ -13,6 +14,8 @@ import com.google.android.exoplayer2.source.hls.HlsMediaSource;
 import com.google.android.exoplayer2.upstream.DataSource;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.google.android.exoplayer2.util.Util;
+import com.ryanheise.just_audio.receiver.ScreenListener;
+
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.EventChannel.EventSink;
 import io.flutter.plugin.common.MethodCall;
@@ -27,6 +30,8 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import android.content.Context;
 import android.net.Uri;
+import android.util.Log;
+
 import java.util.List;
 
 public class AudioPlayer implements MethodCallHandler, Player.EventListener {
@@ -34,26 +39,28 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 	private final Context context;
 	private final MethodChannel methodChannel;
 	private final EventChannel eventChannel;
-	private EventSink eventSink;
+	private static EventSink eventSink;
 
 	private final String id;
-	private volatile PlaybackState state;
-	private long updateTime;
-	private long updatePosition;
+	private static PlaybackState state;
+	private static long updateTime;
+	private static long updatePosition;
 
 	private long duration;
 	private Long start;
 	private Long end;
 	private float volume = 1.0f;
 	private float speed = 1.0f;
-	private Long seekPos;
+	private static Long seekPos;
 	private Result prepareResult;
 	private Result seekResult;
 	private boolean seekProcessed;
-	private boolean buffering;
+	private static boolean buffering;
 	private MediaSource mediaSource;
 
-	private SimpleExoPlayer player;
+	public static SimpleExoPlayer player;
+	String name;
+	String img;
 
 	public AudioPlayer(final Registrar registrar, final String id) {
 		this.registrar = registrar;
@@ -77,6 +84,36 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 
 		player = new SimpleExoPlayer.Builder(context).build();
 		player.addListener(this);
+		registLisener(context);
+	}
+
+	ScreenListener l ;
+	private void registLisener(final Context context) {
+		l = new ScreenListener(context);
+		l.begin(new ScreenListener.ScreenStateListener() {
+			@Override
+			public void onUserPresent() {
+				Log.e("onUserPresent", "onUserPresent");
+			}
+
+			@Override
+			public void onScreenOn() {
+				Log.e("onScreenOn", "onScreenOn");
+			}
+
+			@Override
+			public void onScreenOff() {
+				Log.e("onScreenOff", "onScreenOff");
+				if(player!=null && player.isPlaying()){
+					Intent lockscreen = new Intent(context, LockActivity.class);
+					lockscreen.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+					lockscreen.putExtra("name",name);
+					lockscreen.putExtra("img",img);
+					context.startActivity(lockscreen);
+				}
+
+			}
+		});
 	}
 
 	@Override
@@ -132,6 +169,8 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 			switch (call.method) {
 			case "setUrl":
 				setUrl((String)args.get(0), result);
+				name = (String)args.get(1);
+				img = (String)args.get(2);
 				break;
 			case "setClip":
 				Object start = args.get(0);
@@ -188,7 +227,7 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		}
 	}
 
-	private void broadcastPlaybackEvent() {
+	private static void broadcastPlaybackEvent() {
 		final ArrayList<Object> event = new ArrayList<Object>();
 		event.add(state.ordinal());
 		event.add(buffering);
@@ -197,7 +236,7 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		eventSink.success(event);
 	}
 
-	private long getCurrentPosition() {
+	private static long getCurrentPosition() {
 		if (state == PlaybackState.none || state == PlaybackState.connecting) {
 			return 0;
 		} else if (seekPos != null) {
@@ -207,7 +246,7 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		}
 	}
 
-	private void transition(final PlaybackState newState) {
+	private static void transition(final PlaybackState newState) {
 		final PlaybackState oldState = state;
 		state = newState;
 		broadcastPlaybackEvent();
@@ -246,7 +285,7 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		}
 	}
 
-	public void play() {
+	public static void play() {
 		switch (state) {
 		case playing:
 			break;
@@ -261,7 +300,7 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		}
 	}
 
-	public void pause() {
+	public static void pause() {
 		switch (state) {
 		case paused:
 			break;
