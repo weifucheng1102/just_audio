@@ -18,7 +18,6 @@ import com.ryanheise.just_audio.trans.GlideCircleWithBorder;
 public class LockActivity extends Activity {
     String name;
     String img;
-    String url;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,7 +30,6 @@ public class LockActivity extends Activity {
 
         name = getIntent().getStringExtra("name");
         img = getIntent().getStringExtra("img");
-        url = getIntent().getStringExtra("url");
 
         findViewById(R.id.back).setOnClickListener(new View.OnClickListener() {
             @Override

@@ -84,7 +84,7 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 
 		player = new SimpleExoPlayer.Builder(context).build();
 		player.addListener(this);
-		registLisener(context);
+		registLisener(registrar.context().getApplicationContext());
 	}
 
 	ScreenListener l ;
@@ -114,27 +114,28 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 
 			}
 		});
+
 	}
 
 	@Override
 	public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
 		switch (playbackState) {
-		case Player.STATE_READY:
-			if (prepareResult != null) {
-				duration = player.getDuration();
-				prepareResult.success(duration);
-				prepareResult = null;
-				transition(PlaybackState.stopped);
-			}
-			if (seekProcessed) {
-				completeSeek();
-			}
-			break;
-		case Player.STATE_ENDED:
-			if (state != PlaybackState.completed) {
-				transition(PlaybackState.completed);
-			}
-			break;
+			case Player.STATE_READY:
+				if (prepareResult != null) {
+					duration = player.getDuration();
+					prepareResult.success(duration);
+					prepareResult = null;
+					transition(PlaybackState.stopped);
+				}
+				if (seekProcessed) {
+					completeSeek();
+				}
+				break;
+			case Player.STATE_ENDED:
+				if (state != PlaybackState.completed) {
+					transition(PlaybackState.completed);
+				}
+				break;
 		}
 		final boolean buffering = playbackState == Player.STATE_BUFFERING;
 		// don't notify buffering if (buffering && state == stopped)
@@ -167,56 +168,56 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		final List<?> args = (List<?>)call.arguments;
 		try {
 			switch (call.method) {
-			case "setUrl":
-				setUrl((String)args.get(0), result);
-				name = (String)args.get(1);
-				img = (String)args.get(2);
-				break;
-			case "setClip":
-				Object start = args.get(0);
-				if (start != null && start instanceof Integer) {
-					start = new Long((Integer)start);
-				}
-				Object end = args.get(1);
-				if (end != null && end instanceof Integer) {
-					end = new Long((Integer)end);
-				}
-				setClip((Long)start, (Long)end, result);
-				break;
-			case "play":
-				play();
-				result.success(null);
-				break;
-			case "pause":
-				pause();
-				result.success(null);
-				break;
-			case "stop":
-				stop(result);
-				break;
-			case "setVolume":
-				setVolume((float)((double)((Double)args.get(0))));
-				result.success(null);
-				break;
-			case "setSpeed":
-				setSpeed((float)((double)((Double)args.get(0))));
-				result.success(null);
-				break;
-			case "seek":
-				Object position = args.get(0);
-				if (position instanceof Integer) {
-					seek((Integer)position, result);
-				} else {
-					seek((Long)position, result);
-				}
-				break;
-			case "dispose":
-				dispose();
-				result.success(null);
-				break;
-			default:
-				result.notImplemented();
-				break;
+				case "setUrl":
+					name = (String)args.get(1);
+					img = (String)args.get(2);
+					setUrl((String)args.get(0), result);
+					break;
+				case "setClip":
+					Object start = args.get(0);
+					if (start != null && start instanceof Integer) {
+						start = new Long((Integer)start);
+					}
+					Object end = args.get(1);
+					if (end != null && end instanceof Integer) {
+						end = new Long((Integer)end);
+					}
+					setClip((Long)start, (Long)end, result);
+					break;
+				case "play":
+					play();
+					result.success(null);
+					break;
+				case "pause":
+					pause();
+					result.success(null);
+					break;
+				case "stop":
+					stop(result);
+					break;
+				case "setVolume":
+					setVolume((float)((double)((Double)args.get(0))));
+					result.success(null);
+					break;
+				case "setSpeed":
+					setSpeed((float)((double)((Double)args.get(0))));
+					result.success(null);
+					break;
+				case "seek":
+					Object position = args.get(0);
+					if (position instanceof Integer) {
+						seek((Integer)position, result);
+					} else {
+						seek((Long)position, result);
+					}
+					break;
+				case "dispose":
+					dispose();
+					result.success(null);
+					break;
+				default:
+					result.notImplemented();
+					break;
 			}
 		} catch (IllegalStateException e) {
 			e.printStackTrace();
@@ -278,8 +279,8 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		prepareResult = result;
 		if (start != null || end != null) {
 			player.prepare(new ClippingMediaSource(mediaSource,
-						(start != null ? start : 0) * 1000L,
-						(end != null ? end : C.TIME_END_OF_SOURCE) * 1000L));
+					(start != null ? start : 0) * 1000L,
+					(end != null ? end : C.TIME_END_OF_SOURCE) * 1000L));
 		} else {
 			player.prepare(mediaSource);
 		}
@@ -287,54 +288,54 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 
 	public static void play() {
 		switch (state) {
-		case playing:
-			break;
-		case stopped:
-		case completed:
-		case paused:
-			transition(PlaybackState.playing);
-			player.setPlayWhenReady(true);
-			break;
-		default:
-			throw new IllegalStateException("Cannot call play from connecting/none states (" + state + ")");
+			case playing:
+				break;
+			case stopped:
+			case completed:
+			case paused:
+				transition(PlaybackState.playing);
+				player.setPlayWhenReady(true);
+				break;
+			default:
+				throw new IllegalStateException("Cannot call play from connecting/none states (" + state + ")");
 		}
 	}
 
 	public static void pause() {
 		switch (state) {
-		case paused:
-			break;
-		case playing:
-			player.setPlayWhenReady(false);
-			transition(PlaybackState.paused);
-			break;
-		default:
-			throw new IllegalStateException("Can call pause only from playing and buffering states (" + state + ")");
+			case paused:
+				break;
+			case playing:
+				player.setPlayWhenReady(false);
+				transition(PlaybackState.paused);
+				break;
+			default:
+				throw new IllegalStateException("Can call pause only from playing and buffering states (" + state + ")");
 		}
 	}
 
 	public void stop(final Result result) {
 		switch (state) {
-		case stopped:
-			result.success(null);
-			break;
-		case connecting:
-			abortExistingConnection();
-			buffering = false;
-			transition(PlaybackState.stopped);
-			result.success(null);
-			break;
-		case completed:
-		case playing:
-		case paused:
-			abortSeek();
-			player.setPlayWhenReady(false);
-			transition(PlaybackState.stopped);
-			player.seekTo(0L);
-			result.success(null);
-			break;
-		default:
-			throw new IllegalStateException("Cannot call stop from none state");
+			case stopped:
+				result.success(null);
+				break;
+			case connecting:
+				abortExistingConnection();
+				buffering = false;
+				transition(PlaybackState.stopped);
+				result.success(null);
+				break;
+			case completed:
+			case playing:
+			case paused:
+				abortSeek();
+				player.setPlayWhenReady(false);
+				transition(PlaybackState.stopped);
+				player.seekTo(0L);
+				result.success(null);
+				break;
+			default:
+				throw new IllegalStateException("Cannot call stop from none state");
 		}
 	}
 
