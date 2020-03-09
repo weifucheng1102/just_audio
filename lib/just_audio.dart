@@ -211,25 +211,25 @@ class AudioPlayer {
   /// * [AudioPlaybackState.connecting]
   /// * [AudioPlaybackState.none]
   Future<void> play() async {
-    StreamSubscription subscription;
-    Completer completer = Completer();
-    bool startedPlaying = false;
-    subscription = playbackStateStream.listen((state) {
-      // TODO: It will be more reliable to let the platform
-      // side wait for completion since events on the flutter
-      // side can lag behind the platform side.
-      if (startedPlaying &&
-          (state == AudioPlaybackState.paused ||
-              state == AudioPlaybackState.stopped ||
-              state == AudioPlaybackState.completed)) {
-        subscription.cancel();
-        completer.complete();
-      } else if (state == AudioPlaybackState.playing) {
-        startedPlaying = true;
-      }
-    });
+    // StreamSubscription subscription;
+    // Completer completer = Completer();
+    // bool startedPlaying = false;
+    // subscription = playbackStateStream.listen((state) {
+    //   // TODO: It will be more reliable to let the platform
+    //   // side wait for completion since events on the flutter
+    //   // side can lag behind the platform side.
+    //   if (startedPlaying &&
+    //       (state == AudioPlaybackState.paused ||
+    //           state == AudioPlaybackState.stopped ||
+    //           state == AudioPlaybackState.completed)) {
+    //     subscription.cancel();
+    //     completer.complete();
+    //   } else if (state == AudioPlaybackState.playing) {
+    //     startedPlaying = true;
+    //   }
+    // });
     await _invokeMethod('play');
-    await completer.future;
+    // await completer.future;
   }
 
   /// Pauses the currently playing media. It is legal to invoke this method
