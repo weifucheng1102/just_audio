@@ -81,10 +81,13 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 			}
 		});
 		state = PlaybackState.none;
+
+		player = player!=null?player:new SimpleExoPlayer.Builder(context).build();
+		player.addListener(this);
+		registLisener(registrar.context().getApplicationContext());
 	}
 
-	ScreenListener l;
-
+	ScreenListener l ;
 	private void registLisener(final Context context) {
 		l = new ScreenListener(context);
 		l.begin(new ScreenListener.ScreenStateListener() {
@@ -101,11 +104,11 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 			@Override
 			public void onScreenOff() {
 				Log.e("onScreenOff", "onScreenOff");
-				if (player != null && player.isPlaying()) {
+				if(player!=null && player.isPlaying()){
 					Intent lockscreen = new Intent(context, LockActivity.class);
 					lockscreen.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-					lockscreen.putExtra("name", name);
-					lockscreen.putExtra("img", img);
+					lockscreen.putExtra("name",name);
+					lockscreen.putExtra("img",img);
 					context.startActivity(lockscreen);
 				}
 
@@ -162,24 +165,24 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 
 	@Override
 	public void onMethodCall(final MethodCall call, final Result result) {
-		final List<?> args = (List<?>) call.arguments;
+		final List<?> args = (List<?>)call.arguments;
 		try {
 			switch (call.method) {
 				case "setUrl":
-					name = (String) args.get(1);
-					img = (String) args.get(2);
-					setUrl((String) args.get(0), result);
+					name = (String)args.get(1);
+					img = (String)args.get(2);
+					setUrl((String)args.get(0), result);
 					break;
 				case "setClip":
 					Object start = args.get(0);
 					if (start != null && start instanceof Integer) {
-						start = new Long((Integer) start);
+						start = new Long((Integer)start);
 					}
 					Object end = args.get(1);
 					if (end != null && end instanceof Integer) {
-						end = new Long((Integer) end);
+						end = new Long((Integer)end);
 					}
-					setClip((Long) start, (Long) end, result);
+					setClip((Long)start, (Long)end, result);
 					break;
 				case "play":
 					play();
@@ -193,19 +196,19 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 					stop(result);
 					break;
 				case "setVolume":
-					setVolume((float) ((double) ((Double) args.get(0))));
+					setVolume((float)((double)((Double)args.get(0))));
 					result.success(null);
 					break;
 				case "setSpeed":
-					setSpeed((float) ((double) ((Double) args.get(0))));
+					setSpeed((float)((double)((Double)args.get(0))));
 					result.success(null);
 					break;
 				case "seek":
 					Object position = args.get(0);
 					if (position instanceof Integer) {
-						seek((Integer) position, result);
+						seek((Integer)position, result);
 					} else {
-						seek((Long) position, result);
+						seek((Long)position, result);
 					}
 					break;
 				case "dispose":
@@ -254,8 +257,7 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		abortExistingConnection();
 		prepareResult = result;
 		transition(PlaybackState.connecting);
-		DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(context,
-				Util.getUserAgent(context, "just_audio"));
+		DataSource.Factory dataSourceFactory = new DefaultDataSourceFactory(context, Util.getUserAgent(context, "just_audio"));
 		Uri uri = Uri.parse(url);
 		if (uri.getPath().toLowerCase().endsWith(".mpd")) {
 			mediaSource = new DashMediaSource.Factory(dataSourceFactory).createMediaSource(uri);
@@ -264,14 +266,7 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		} else {
 			mediaSource = new ProgressiveMediaSource.Factory(dataSourceFactory).createMediaSource(uri);
 		}
-		if (player == null) {
-			player = new SimpleExoPlayer.Builder(this.context).build();
-			player.addListener(this);
-			registLisener(this.registrar.context().getApplicationContext());
-			player.prepare(mediaSource);
-		} else {
-			player.prepare(mediaSource);
-		}
+		player.prepare(mediaSource);
 	}
 
 	public void setClip(final Long start, final Long end, final Result result) {
@@ -282,27 +277,16 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		this.start = start;
 		this.end = end;
 		prepareResult = result;
-		if (player == null) {
-			player = new SimpleExoPlayer.Builder(this.context).build();
-			player.addListener(this);
-			registLisener(this.registrar.context().getApplicationContext());
-			if (start != null || end != null) {
-				player.prepare(new ClippingMediaSource(mediaSource, (start != null ? start : 0) * 1000L,
-						(end != null ? end : C.TIME_END_OF_SOURCE) * 1000L));
-			} else {
-				player.prepare(mediaSource);
-			}
+		if (start != null || end != null) {
+			player.prepare(new ClippingMediaSource(mediaSource,
+					(start != null ? start : 0) * 1000L,
+					(end != null ? end : C.TIME_END_OF_SOURCE) * 1000L));
 		} else {
-			if (start != null || end != null) {
-				player.prepare(new ClippingMediaSource(mediaSource, (start != null ? start : 0) * 1000L,
-						(end != null ? end : C.TIME_END_OF_SOURCE) * 1000L));
-			} else {
-				player.prepare(mediaSource);
-			}
+			player.prepare(mediaSource);
 		}
 	}
 
-	public void play() {
+	public static void play() {
 		switch (state) {
 			case playing:
 				break;
@@ -310,38 +294,23 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 			case completed:
 			case paused:
 				transition(PlaybackState.playing);
-				if (player == null) {
-					player = new SimpleExoPlayer.Builder(this.context).build();
-					player.addListener(this);
-					registLisener(this.registrar.context().getApplicationContext());
-					player.setPlayWhenReady(true);
-				} else {
-					player.setPlayWhenReady(true);
-				}
+				player.setPlayWhenReady(true);
 				break;
 			default:
 				throw new IllegalStateException("Cannot call play from connecting/none states (" + state + ")");
 		}
 	}
 
-	public void pause() {
+	public static void pause() {
 		switch (state) {
 			case paused:
 				break;
 			case playing:
-				if (player == null) {
-					player = new SimpleExoPlayer.Builder(this.context).build();
-					player.addListener(this);
-					registLisener(this.registrar.context().getApplicationContext());
-					player.setPlayWhenReady(false);
-				} else {
-					player.setPlayWhenReady(false);
-				}
+				player.setPlayWhenReady(false);
 				transition(PlaybackState.paused);
 				break;
 			default:
-				throw new IllegalStateException(
-						"Can call pause only from playing and buffering states (" + state + ")");
+				throw new IllegalStateException("Can call pause only from playing and buffering states (" + state + ")");
 		}
 	}
 
@@ -360,19 +329,9 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 			case playing:
 			case paused:
 				abortSeek();
-				if (player == null) {
-					player = new SimpleExoPlayer.Builder(this.context).build();
-					player.addListener(this);
-					registLisener(this.registrar.context().getApplicationContext());
-					player.setPlayWhenReady(false);
-					transition(PlaybackState.stopped);
-					player.seekTo(0L);
-				} else {
-					player.setPlayWhenReady(false);
-					transition(PlaybackState.stopped);
-					player.seekTo(0L);
-				}
-
+				player.setPlayWhenReady(false);
+				transition(PlaybackState.stopped);
+				player.seekTo(0L);
 				result.success(null);
 				break;
 			default:
@@ -382,29 +341,12 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 
 	public void setVolume(final float volume) {
 		this.volume = volume;
-		if (player == null) {
-			player = new SimpleExoPlayer.Builder(this.context).build();
-			player.addListener(this);
-			registLisener(this.registrar.context().getApplicationContext());
-			player.setVolume(volume);
-		} else {
-			player.setVolume(volume);
-
-		}
+		player.setVolume(volume);
 	}
 
 	public void setSpeed(final float speed) {
 		this.speed = speed;
-		if (player == null) {
-			player = new SimpleExoPlayer.Builder(context).build();
-			player.addListener(this);
-			registLisener(registrar.context().getApplicationContext());
-			player.setPlaybackParameters(new PlaybackParameters(speed));
-
-		} else {
-			player.setPlaybackParameters(new PlaybackParameters(speed));
-
-		}
+		player.setPlaybackParameters(new PlaybackParameters(speed));
 		broadcastPlaybackEvent();
 	}
 
@@ -416,20 +358,11 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 		seekPos = position;
 		seekResult = result;
 		seekProcessed = false;
-		if (player == null) {
-			player = new SimpleExoPlayer.Builder(this.context).build();
-			player.addListener(this);
-			registLisener(this.registrar.context().getApplicationContext());
-			player.seekTo(position);
-		} else {
-			player.seekTo(position);
-		}
+		player.seekTo(position);
 	}
 
 	public void dispose() {
-		if (player != null) {
-			player.release();
-		}
+		player.release();
 		buffering = false;
 		transition(PlaybackState.none);
 	}
@@ -451,6 +384,11 @@ public class AudioPlayer implements MethodCallHandler, Player.EventListener {
 	}
 
 	enum PlaybackState {
-		none, stopped, paused, playing, connecting, completed
+		none,
+		stopped,
+		paused,
+		playing,
+		connecting,
+		completed
 	}
 }
